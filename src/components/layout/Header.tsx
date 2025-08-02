@@ -56,7 +56,7 @@ const Header = () => {
       <Link href="/">EMAAR VILLAS</Link>
      </motion.div>
 
-     <div className="hidden md:flex items-center space-x-8">
+     <div className="hidden items-center space-x-8">
       {navLinks.map((link, index) => (
        <motion.div
         key={link.href}

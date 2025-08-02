@@ -82,7 +82,7 @@ const HeroSection = () => {
    <div className="absolute inset-0 bg-gradient-hero z-10" />
 
    {/* Content max-w-7xl */}
-   <div className="relative z-20 w-full max-w-6xl mx-auto px-6 text-center py-24">
+   <div className="relative z-20 w-full max-w-6xl mx-auto px-6 text-center pt-20 pb-10">
     {/* Header & Description */}
     <div className="mb-12">
      <motion.h1
