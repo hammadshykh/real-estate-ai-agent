@@ -82,14 +82,14 @@ const HeroSection = () => {
    <div className="absolute inset-0 bg-gradient-hero z-10" />
 
    {/* Content max-w-7xl */}
-   <div className="relative z-20 w-full max-w-6xl mx-auto px-6 text-center pt-20 pb-10">
+   <div className="relative z-20 w-full max-w-6xl mx-auto px-6 text-center pt-16 pb-10">
     {/* Header & Description */}
-    <div className="mb-12">
+    <div className="mb-8">
      <motion.h1
       initial={{ opacity: 0, y: 30 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.8, delay: 0.2 }}
-      className="text-5xl md:text-6xl lg:text-7xl font-bold mb-6 leading-tight text-white"
+      className="text-5xl md:text-4xl lg:text-5xl font-bold mb-6 leading-tight text-white"
      >
       Luxury Villas in Dubai
      </motion.h1>
@@ -98,7 +98,7 @@ const HeroSection = () => {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.8, delay: 0.4 }}
-      className="text-lg md:text-xl text-white/90 max-w-3xl mx-auto"
+      className="text-sm text-white/90 max-w-2xl mx-auto"
      >
       {
        "Discover Your Dream Home with Emaar Properties - Where Luxury Meets Innovation in Dubai's Most Prestigious Neighborhoods"
