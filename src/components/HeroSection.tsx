@@ -7,40 +7,111 @@ import { Button } from "@/components/ui/button";
 import ChatInterface, { ChatMessage } from "@/components/ChatInterface";
 import ChatBot from "./ChatInterface/chatBotPopup";
 
-const dummyMessages: ChatMessage[] = [
- {
-  id: "1",
-  from: "agent",
-  text:
-   "Hello Alessandro! 👋 What's your ideal budget for a luxury villa in Dubai? This will help me in finding the perfect options for you.",
-  timestamp: new Date(),
- },
- {
-  id: "2",
-  from: "user",
-  text: "2.5 million AED",
-  timestamp: new Date(),
- },
-];
+const generateSessionId = () => {
+ return `session-${Math.random().toString(36).substring(2, 9)}-${Date.now()}`;
+};
+
+const DEFAULT_WELCOME_MESSAGE =
+ "Hello, I'm Jessica, your luxury villa consultant in Dubai. What's your name?";
+
+// Helper function to parse messages from localStorage
+const parseMessages = (storedMessages: string | null): ChatMessage[] => {
+ if (!storedMessages) return [];
+
+ try {
+  const parsed = JSON.parse(storedMessages);
+  return parsed.map((msg: ChatMessage) => ({
+   ...msg,
+   timestamp: new Date(msg.timestamp),
+  }));
+ } catch (error) {
+  console.error("Error parsing messages:", error);
+  return [];
+ }
+};
 
 const HeroSection = () => {
- const [messages, setMessages] = useState<ChatMessage[]>(dummyMessages);
+ const [messages, setMessages] = useState<ChatMessage[]>([]);
  const [showChatBot, setShowChatBot] = useState(false);
+ const [sessionId, setSessionId] = useState<string>("");
+ const [isLoading, setIsLoading] = useState(false);
 
+ // Initialize chat session and load messages
  useEffect(() => {
-  const handleScroll = () => {
-   const heroSection = document.getElementById("hero-section");
-   if (heroSection) {
-    const heroBottom = heroSection.getBoundingClientRect().bottom;
-    setShowChatBot(heroBottom < 0); // Show chat when scrolled past hero
+  const initializeChat = async () => {
+   // Check for existing session and messages
+   const storedSessionId = localStorage.getItem("chatSessionId");
+   const storedMessages = localStorage.getItem("chatMessages");
+
+   if (storedSessionId && storedMessages) {
+    // Existing user - load previous messages
+    setSessionId(storedSessionId);
+    setMessages(parseMessages(storedMessages));
+   } else {
+    // New user - create session and send welcome message
+    const newSessionId = generateSessionId();
+    localStorage.setItem("chatSessionId", newSessionId);
+    setSessionId(newSessionId);
+
+    // Send welcome message
+    await sendWelcomeMessage(newSessionId);
    }
   };
 
-  window.addEventListener("scroll", handleScroll);
-  return () => window.removeEventListener("scroll", handleScroll);
+  initializeChat();
  }, []);
 
- const handleSendMessage = (message: string) => {
+ const sendWelcomeMessage = async (sessionId: string) => {
+  try {
+   setIsLoading(true);
+   const response = await fetch(
+    "https://n8n-self-host-lvfp.onrender.com/webhook/ee30d5a2-b250-4e42-a4ff-d0cb6f2e3fa2",
+    {
+     method: "POST",
+     headers: {
+      "Content-Type": "application/json",
+     },
+     body: JSON.stringify({
+      sessionId: sessionId,
+      botMessage: DEFAULT_WELCOME_MESSAGE,
+     }),
+    }
+   );
+
+   const data = await response.json();
+   console.log("Welcome API response:", data);
+
+   const welcomeMessage: ChatMessage = {
+    id: Date.now().toString(),
+    from: "agent",
+    text: data.output || DEFAULT_WELCOME_MESSAGE,
+    timestamp: new Date(),
+   };
+
+   setMessages([welcomeMessage]);
+   localStorage.setItem("chatMessages", JSON.stringify([welcomeMessage]));
+  } catch (error) {
+   console.error("Error sending welcome message:", error);
+
+   // Fallback welcome message
+   const welcomeMessage: ChatMessage = {
+    id: Date.now().toString(),
+    from: "agent",
+    text: DEFAULT_WELCOME_MESSAGE,
+    timestamp: new Date(),
+   };
+
+   setMessages([welcomeMessage]);
+   localStorage.setItem("chatMessages", JSON.stringify([welcomeMessage]));
+  } finally {
+   setIsLoading(false);
+  }
+ };
+
+ const handleSendMessage = async (message: string) => {
+  if (!sessionId) return;
+
+  // Add user message immediately
   const newMessage: ChatMessage = {
    id: Date.now().toString(),
    from: "user",
@@ -48,20 +119,74 @@ const HeroSection = () => {
    timestamp: new Date(),
   };
 
-  setMessages((prev) => [...prev, newMessage]);
+  const updatedMessages = [...messages, newMessage];
+  setMessages(updatedMessages);
+  localStorage.setItem("chatMessages", JSON.stringify(updatedMessages));
 
-  // Simulate agent response
-  setTimeout(() => {
-   const agentResponse: ChatMessage = {
+  try {
+   setIsLoading(true);
+   // Send to conversation API
+   const response = await fetch(
+    "https://n8n-self-host-lvfp.onrender.com/webhook/bdcda220-3c32-4ec2-8a6b-fdc09fde6a03",
+    {
+     method: "POST",
+     headers: {
+      "Content-Type": "application/json",
+     },
+     body: JSON.stringify({
+      sessionId: sessionId,
+      userReply: message,
+     }),
+    }
+   );
+
+   const data = await response.json();
+   console.log("Conversation API response:", data);
+
+   const botResponse: ChatMessage = {
     id: (Date.now() + 1).toString(),
     from: "agent",
     text:
-     "Perfect! I have some stunning villa options in that range. Let me show you our premium collections in Emirates Hills and Palm Jumeirah.",
+     data.output ||
+     "Thank you for your message. I'll help you find the perfect luxury villa in Dubai.",
     timestamp: new Date(),
    };
-   setMessages((prev) => [...prev, agentResponse]);
-  }, 1500);
+
+   const finalMessages = [...updatedMessages, botResponse];
+   setMessages(finalMessages);
+   localStorage.setItem("chatMessages", JSON.stringify(finalMessages));
+  } catch (error) {
+   console.error("Error sending message:", error);
+
+   // Fallback response
+   const botResponse: ChatMessage = {
+    id: (Date.now() + 1).toString(),
+    from: "agent",
+    text:
+     "Thank you for your message. I'll help you find the perfect luxury villa in Dubai.",
+    timestamp: new Date(),
+   };
+
+   const finalMessages = [...updatedMessages, botResponse];
+   setMessages(finalMessages);
+   localStorage.setItem("chatMessages", JSON.stringify(finalMessages));
+  } finally {
+   setIsLoading(false);
+  }
  };
+
+ useEffect(() => {
+  const handleScroll = () => {
+   const heroSection = document.getElementById("hero-section");
+   if (heroSection) {
+    const heroBottom = heroSection.getBoundingClientRect().bottom;
+    setShowChatBot(heroBottom < 0);
+   }
+  };
+
+  window.addEventListener("scroll", handleScroll);
+  return () => window.removeEventListener("scroll", handleScroll);
+ }, []);
 
  return (
   <section
@@ -106,14 +231,18 @@ const HeroSection = () => {
      </motion.p>
     </div>
 
-    {/* Chat Interface - Now shown inline on desktop, floating on mobile */}
+    {/* Chat Interface */}
     <motion.div
      initial={{ opacity: 0, y: 50 }}
      animate={{ opacity: 1, y: 0 }}
      transition={{ duration: 0.8, delay: 0.6 }}
-     className="max-w-lg mx-auto mb-12" // Hide on large screens
+     className="max-w-lg mx-auto mb-12"
     >
-     <ChatInterface messages={messages} onSendMessage={handleSendMessage} />
+     <ChatInterface
+      messages={messages}
+      onSendMessage={handleSendMessage}
+      isLoading={isLoading}
+     />
     </motion.div>
 
     {/* Action Buttons */}
@@ -148,12 +277,13 @@ const HeroSection = () => {
     </motion.div>
    </motion.div>
 
-   {/* Floating ChatBot - Shown after scrolling past hero section */}
+   {/* Floating ChatBot */}
    {showChatBot && (
     <ChatBot
      initialMessages={messages}
      onSendMessage={handleSendMessage}
-     className="hidden lg:block" // Only show floating version on large screens
+     className="hidden lg:block"
+     isLoading={isLoading}
     />
    )}
   </section>

@@ -29,10 +29,22 @@ export interface ChatMessage {
 
 interface ChatInterfaceProps {
  messages: ChatMessage[];
- onSendMessage: (message: string) => void;
+ onSendMessage: (message: string) => Promise<void>;
+ isLoading: boolean;
 }
 
-const ChatInterface = ({ messages, onSendMessage }: ChatInterfaceProps) => {
+const formatTime = (date: Date) => {
+ return date.toLocaleTimeString([], {
+  hour: "2-digit",
+  minute: "2-digit",
+ });
+};
+
+const ChatInterface = ({
+ messages,
+ onSendMessage,
+ isLoading,
+}: ChatInterfaceProps) => {
  const {
   register,
   handleSubmit,
@@ -42,9 +54,13 @@ const ChatInterface = ({ messages, onSendMessage }: ChatInterfaceProps) => {
   resolver: zodResolver(messageSchema),
  });
 
- const onSubmit = (data: MessageForm) => {
-  onSendMessage(data.message);
-  reset();
+ const onSubmit = async (data: MessageForm) => {
+  try {
+   await onSendMessage(data.message);
+   reset();
+  } catch (error) {
+   console.error("Failed to send message:", error);
+  }
  };
 
  return (
@@ -106,14 +122,28 @@ const ChatInterface = ({ messages, onSendMessage }: ChatInterfaceProps) => {
       >
        <p className="text-sm leading-relaxed">{message.text}</p>
        <p className="text-xs opacity-70 mt-2">
-        {message.timestamp.toLocaleTimeString([], {
-         hour: "2-digit",
-         minute: "2-digit",
-        })}
+        {formatTime(new Date(message.timestamp))}
        </p>
       </div>
      </motion.div>
     ))}
+
+    {/* Loading indicator for agent response */}
+    {isLoading && (
+     <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="flex justify-start"
+     >
+      <div className="max-w-[80%] p-4 rounded-2xl bg-white text-foreground border border-white/20">
+       <div className="flex space-x-2">
+        <div className="w-2 h-2 rounded-full bg-gray-400 animate-bounce" />
+        <div className="w-2 h-2 rounded-full bg-gray-400 animate-bounce delay-100" />
+        <div className="w-2 h-2 rounded-full bg-gray-400 animate-bounce delay-200" />
+       </div>
+      </div>
+     </motion.div>
+    )}
    </div>
 
    {/* Chat Input */}
@@ -124,8 +154,15 @@ const ChatInterface = ({ messages, onSendMessage }: ChatInterfaceProps) => {
        {...register("message")}
        placeholder="Ask me about luxury villas..."
        className="flex-1 bg-white/20 border-white/30 text-white placeholder:text-white/60 backdrop-blur-sm"
+       disabled={isLoading}
       />
-      <Button type="submit" variant="premium" size="sm" className="px-6">
+      <Button
+       type="submit"
+       variant="premium"
+       size="sm"
+       className="px-6"
+       disabled={isLoading}
+      >
        <Send className="w-4 h-4" />
       </Button>
      </div>

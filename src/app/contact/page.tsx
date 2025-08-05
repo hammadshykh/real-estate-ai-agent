@@ -1,7 +1,6 @@
 // app/contact/page.tsx
 import { ContactHero } from "@/components/modules/contact/ContactHero";
 import { ContactForm } from "@/components/modules/contact/ContactForm";
-import { ContactInfoCard } from "@/components/modules/contact/ContactInfoCard";
 import Information from "@/components/modules/contact/Information";
 
 export default function ContactPage() {

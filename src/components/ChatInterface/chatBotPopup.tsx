@@ -29,25 +29,24 @@ interface ChatMessage {
 }
 
 interface ChatBotProps {
- initialMessages?: ChatMessage[];
- onSendMessage: (message: string) => void;
+ initialMessages: ChatMessage[];
+ onSendMessage: (message: string) => Promise<void>;
  className?: string;
+ isLoading: boolean;
 }
 
-const defaultMessages: ChatMessage[] = [
- {
-  id: "1",
-  from: "agent",
-  text:
-   "Hello! 👋 I'm your luxury villa consultant. How can I assist you today?",
-  timestamp: new Date(),
- },
-];
+const formatTime = (date: Date) => {
+ return date.toLocaleTimeString([], {
+  hour: "2-digit",
+  minute: "2-digit",
+ });
+};
 
 const ChatBot = ({
- initialMessages = defaultMessages,
+ initialMessages = [],
  onSendMessage,
  className = "",
+ isLoading,
 }: ChatBotProps) => {
  const [isOpen, setIsOpen] = useState(false);
  const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
@@ -55,8 +54,9 @@ const ChatBot = ({
 
  useEffect(() => {
   setIsMounted(true);
+  setMessages(initialMessages);
   return () => setIsMounted(false);
- }, []);
+ }, [initialMessages]);
 
  const {
   register,
@@ -82,12 +82,16 @@ const ChatBot = ({
   reset();
 
   // Call parent handler
-  onSendMessage(data.message);
+  try {
+   await onSendMessage(data.message);
+  } catch (error) {
+   console.error("Failed to send message:", error);
+  }
  };
 
  // Auto-scroll to bottom when new messages arrive
  useEffect(() => {
-  const chatContainer = document.getElementById("chat-messages");
+  const chatContainer = document.getElementById("chatbot-messages");
   if (chatContainer) {
    chatContainer.scrollTop = chatContainer.scrollHeight;
   }
@@ -96,7 +100,7 @@ const ChatBot = ({
  if (!isMounted) return null;
 
  return (
-  <div className={`fixed bottom-6  right-6 z-50 ${className}`}>
+  <div className={`fixed bottom-6 right-6 z-50 ${className}`}>
    {/* Floating Chat Button */}
    <motion.div
     initial={{ scale: 0 }}
@@ -107,7 +111,7 @@ const ChatBot = ({
    >
     <Button
      onClick={() => setIsOpen(!isOpen)}
-     variant="luxury"
+     variant="premium"
      size="lg"
      className="rounded-full w-16 h-16 shadow-xl"
      aria-label="Open chat"
@@ -116,7 +120,7 @@ const ChatBot = ({
     </Button>
 
     {/* Online Status Indicator */}
-    <div className="absolute -top-1 -right-1 w-5 h-5 bg-green-500 rounded-full border-2 border-white flex items-center justify-center">
+    <div className="absolute -top-1  -right-1 w-5 h-5 bg-green-500 rounded-full border-2 border-white flex items-center justify-center">
      <motion.div
       animate={{ scale: [1, 1.2, 1] }}
       transition={{ duration: 2, repeat: Infinity }}
@@ -133,11 +137,11 @@ const ChatBot = ({
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: 20, scale: 0.9 }}
       transition={{ type: "spring", damping: 25, stiffness: 300 }}
-      className="absolute bottom-20 w-80 right-0 w-full max-w-md h-[500px]"
+      className="absolute bottom-20  md:w-96 right-0 w-60 max-w-xs sm:max-w-sm h-[500px]"
      >
-      <Card className="w-full h-full flex flex-col border border-white/20 overflow-hidden shadow-2xl">
+      <Card className="w-full h-full flex flex-col border border-white/20 overflow-hidden shadow-2xl bg-gradient-glass backdrop-blur-lg">
        {/* Chat Header */}
-       <div className="p-4 bg-gradient-to-r from-primary to-primary/90 flex items-center justify-between">
+       <div className="p-4 bg-gradient-luxury flex items-center justify-between">
         <div className="flex items-center space-x-3">
          <Avatar className="w-10 h-10 border-2 border-white/30">
           <AvatarImage src="/agent-jessica.jpg" />
@@ -146,8 +150,10 @@ const ChatBot = ({
           </AvatarFallback>
          </Avatar>
          <div>
-          <h3 className="font-semibold text-white">Jessica V.</h3>
-          <p className="text-xs text-white/80">Luxury Villa Specialist</p>
+          <h3 className="font-semibold text-white">Jessica Al-Mansouri</h3>
+          <p className="text-xs text-white/80">
+           Senior Luxury Villa Consultant
+          </p>
          </div>
         </div>
         <div className="flex items-center space-x-2">
@@ -172,7 +178,7 @@ const ChatBot = ({
 
        {/* Messages Container */}
        <div
-        id="chat-messages"
+        id="chatbot-messages"
         className="flex-1 p-4 overflow-y-auto space-y-4 bg-white/5 backdrop-blur-sm"
        >
         {messages.map((message) => (
@@ -189,7 +195,7 @@ const ChatBot = ({
            className={`max-w-[85%] p-3 rounded-2xl ${
             message.from === "user"
              ? "bg-primary text-primary-foreground rounded-tr-none"
-             : "bg-white text-gray-900 rounded-tl-none border border-gray-200"
+             : "bg-white text-foreground rounded-tl-none border border-white/20"
            }`}
           >
            <p className="text-sm">{message.text}</p>
@@ -200,34 +206,52 @@ const ChatBot = ({
               : "text-gray-500"
             }`}
            >
-            {message.timestamp.toLocaleTimeString([], {
-             hour: "2-digit",
-             minute: "2-digit",
-            })}
+            {formatTime(new Date(message.timestamp))}
            </p>
           </div>
          </motion.div>
         ))}
+
+        {/* Loading indicator for agent response */}
+        {isLoading && (
+         <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex justify-start"
+         >
+          <div className="max-w-[85%] p-3 rounded-2xl bg-white text-foreground border border-white/20 rounded-tl-none">
+           <div className="flex space-x-2">
+            <div className="w-2 h-2 rounded-full bg-gray-400 animate-bounce" />
+            <div className="w-2 h-2 rounded-full bg-gray-400 animate-bounce delay-100" />
+            <div className="w-2 h-2 rounded-full bg-gray-400 animate-bounce delay-200" />
+           </div>
+          </div>
+         </motion.div>
+        )}
        </div>
 
        {/* Message Input Form */}
-       <div className="p-4 border-t border-white/10 bg-white/5 backdrop-blur-sm">
+       <div className="p-4 border-t border-white/10 bg-white/10 backdrop-blur-sm">
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-2">
          <div className="flex space-x-2">
           <Input
            {...register("message")}
-           placeholder="Type your message..."
-           className="flex-1 bg-white/20 border-white/30 text-white placeholder:text-white/60 border border-black placeholer:text-black text-black focus-visible:ring-white/20"
-           disabled={isSubmitting}
+           placeholder="Ask about luxury villas..."
+           className="flex-1 bg-white/20 border-white/30 text-white placeholder:text-white/60 backdrop-blur-sm"
+           disabled={isSubmitting || isLoading}
           />
           <Button
            type="submit"
-           variant="luxury"
+           variant="premium"
            size="default"
            className="px-4"
-           disabled={isSubmitting}
+           disabled={isSubmitting || isLoading}
           >
-           <Send className="w-4 h-4" />
+           {isSubmitting ? (
+            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+           ) : (
+            <Send className="w-4 h-4" />
+           )}
           </Button>
          </div>
          {errors.message && (

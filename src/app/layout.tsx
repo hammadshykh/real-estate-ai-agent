@@ -85,9 +85,10 @@ export const metadata: Metadata = {
  },
  icons: {
   icon: {
-   url: "/favicon-for-real-estate.png",
+   url: "/for-real-estate.png",
   },
-  apple: [{ url: "/favicon-for-real-estate.png" }],
+  apple: { url: "/for-real-estate.png" },
+
   other: [
    {
     rel: "mask-icon",
